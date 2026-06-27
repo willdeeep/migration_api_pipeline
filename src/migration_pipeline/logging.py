@@ -33,6 +33,16 @@ class JsonFormatter(logging.Formatter):
 
 _RESERVED = frozenset(logging.makeLogRecord({}).__dict__) | {"message", "asctime"}
 
+# Third-party loggers turned down so migration run logs stay readable. httpx logs
+# every request at INFO (our client already logs each page); google.auth emits a
+# benign "no project" warning even though we pass the project explicitly.
+_THIRD_PARTY_LEVELS = {
+    "httpx": logging.WARNING,
+    "httpcore": logging.WARNING,
+    "google.auth": logging.ERROR,
+    "google.auth._default": logging.ERROR,
+}
+
 
 def configure_logging(level: str = "INFO") -> None:
     """Configure root logging to emit JSON lines at ``level``."""
@@ -42,3 +52,6 @@ def configure_logging(level: str = "INFO") -> None:
     root.handlers.clear()
     root.addHandler(handler)
     root.setLevel(level.upper())
+
+    for name, third_party_level in _THIRD_PARTY_LEVELS.items():
+        logging.getLogger(name).setLevel(third_party_level)

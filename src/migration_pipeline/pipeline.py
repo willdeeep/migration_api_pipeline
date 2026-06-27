@@ -19,7 +19,7 @@ from typing import Any, Protocol
 from .config import TARGET_STATES, Settings, load_settings
 from .logging import configure_logging
 from .schema import ChapterRecord
-from .transform import to_chapter_record
+from .validate import validate_features
 
 logger = logging.getLogger("migration_pipeline")
 
@@ -56,8 +56,9 @@ def run(
 ) -> RunSummary:
     """Execute one migration run end-to-end and return a :class:`RunSummary`.
 
-    Validation/quarantine is wired in Phase 2; for now every transformed record
-    is treated as valid.
+    Extract -> validate (with quarantine) -> load. Quarantined records are logged
+    with their reason and counted; a zero-record extract is treated as suspect and
+    left as a no-op so a transient empty source never wipes the target.
     """
     settings = settings or load_settings()
     configure_logging(settings.log_level)
@@ -76,10 +77,26 @@ def run(
     logger.info("Starting migration run", extra={"states": list(TARGET_STATES)})
     sink.ensure_target()
 
-    records = [to_chapter_record(feature) for feature in source.fetch_features(TARGET_STATES)]
-    summary = RunSummary(fetched=len(records), valid=len(records))
+    features = list(source.fetch_features(TARGET_STATES))
+    if not features:
+        logger.warning("Source returned zero records; leaving target snapshot intact")
 
-    summary.loaded = sink.load(records)
+    result = validate_features(features)
+    for quarantined in result.quarantined:
+        logger.warning(
+            "Quarantined record",
+            extra={
+                "reason": quarantined.reason,
+                "chapter_id": quarantined.raw.get("properties", {}).get("ChapterID"),
+            },
+        )
+
+    summary = RunSummary(
+        fetched=len(features),
+        valid=len(result.valid),
+        quarantined=len(result.quarantined),
+    )
+    summary.loaded = sink.load(result.valid)
     logger.info(
         "Migration run finished",
         extra={

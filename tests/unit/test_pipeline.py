@@ -76,3 +76,17 @@ def test_run_handles_empty_source_without_error() -> None:
 
     assert summary.fetched == 0
     assert summary.loaded == 0
+
+
+def test_run_quarantines_invalid_records_and_loads_only_valid() -> None:
+    source = FakeSource([_feature("CA-1"), _feature("TX-1", state="TX")])
+    sink = FakeSink()
+
+    summary = run(_settings(), source=source, sink=sink)
+
+    assert summary.fetched == 2
+    assert summary.valid == 1
+    assert summary.quarantined == 1
+    assert summary.loaded == 1
+    assert sink.records is not None
+    assert [r.chapter_id for r in sink.records] == ["CA-1"]
