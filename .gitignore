@@ -1,0 +1,46 @@
+# Local agent/workspace dirs (specs & plans kept untracked)
+.claude
+.opencode
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.json-key
+gha-creds-*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# uv / virtualenv
+.venv/
+venv/
+
+# Testing / coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Terraform
+infra/**/.terraform/
+infra/**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/

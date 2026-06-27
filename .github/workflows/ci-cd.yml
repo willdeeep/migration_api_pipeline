@@ -1,0 +1,25 @@
+# CI/CD pipeline — placeholder (implemented in Phase 5).
+#
+# Planned stages:
+#   lint   -> ruff check + format --check
+#   type   -> mypy
+#   test   -> pytest (unit + integration)
+#   build  -> docker build
+#   push   -> push image to Artifact Registry (auth via Workload Identity Federation)
+#   deploy -> terraform apply + deploy new Cloud Run Job revision
+#
+# Authentication to GCP is keyless (OIDC -> WIF); no JSON keys are stored as secrets.
+
+name: ci-cd
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Implemented in Phase 5"
