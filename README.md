@@ -8,8 +8,9 @@ transforms them, and loads them into **BigQuery** (the cloud migration target).
 It is containerised, deployed to GCP as a scheduled daily **Cloud Run Job**, and
 built/shipped via **GitHub Actions** with keyless authentication.
 
-> Status: **Phase 0 — skeleton.** Module boundaries and tooling are in place;
-> stage logic is implemented in subsequent phases (see the roadmap below).
+> Status: **Phases 0–3 complete.** The pipeline runs end-to-end (locally and in a
+> container) into BigQuery, with validation/quarantine and structured logging.
+> Cloud IaC and CI/CD are the remaining phases (see the roadmap below).
 
 ## Architecture
 
@@ -67,11 +68,17 @@ uv run mypy
 uv run pytest
 ```
 
-Containerised run (Phase 3):
+Containerised run — a teammate can run the whole migration with one command.
+Prerequisites: a `.env` (see `.env.example`) and local ADC
+(`gcloud auth application-default login`); compose mounts your ADC read-only so
+the container authenticates exactly as you do locally.
 
 ```bash
 docker compose run --rm migration
 ```
+
+The image is multi-stage (built with the `uv` base image, shipped on
+`python:3.14-slim`), runs as a non-root user, and is ~210 MB.
 
 ## Documentation
 
@@ -80,10 +87,10 @@ docker compose run --rm migration
 
 ## Roadmap
 
-- **Phase 0** — Skeleton & tooling *(current)*
-- **Phase 1** — Local functional spike (end-to-end: API → BigQuery)
-- **Phase 2** — Production hardening (validation/quarantine, retries, idempotency)
-- **Phase 3** — Containerisation (Dockerfile, docker-compose)
-- **Phase 4** — Infrastructure as Code (Terraform on GCP)
+- ✅ **Phase 0** — Skeleton & tooling
+- ✅ **Phase 1** — Local functional spike (end-to-end: API → BigQuery)
+- ✅ **Phase 2** — Production hardening (validation/quarantine, retries, idempotency)
+- ✅ **Phase 3** — Containerisation (Dockerfile, docker-compose)
+- **Phase 4** — Infrastructure as Code (Terraform on GCP) *(next)*
 - **Phase 5** — CI/CD (GitHub Actions, keyless WIF)
 - **Phase 6** — Docs & operational readiness

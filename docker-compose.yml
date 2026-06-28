@@ -1,0 +1,24 @@
+# Local development / testing for the migration job.
+#
+# Usage:
+#   cp .env.example .env            # then edit values
+#   gcloud auth application-default login
+#   docker compose run --rm migration
+#
+# Runtime config comes from .env (env_file); cloud credentials are mounted from
+# your local Application Default Credentials (OAuth — no JSON key baked in).
+
+services:
+  migration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: migration-pipeline:local
+    env_file:
+      - .env
+    volumes:
+      # Mount host ADC read-only at the in-container user's well-known location,
+      # so google-cloud-bigquery authenticates exactly as it does locally.
+      - ${HOME}/.config/gcloud:/home/app/.config/gcloud:ro
+    # A migration run is a one-shot job, not a long-running service.
+    restart: "no"
