@@ -1,14 +1,21 @@
-# CI/CD pipeline — placeholder (implemented in Phase 5).
+# CI/CD for the migration pipeline.
 #
-# Planned stages:
-#   lint   -> ruff check + format --check
-#   type   -> mypy
-#   test   -> pytest (unit + integration)
-#   build  -> docker build
-#   push   -> push image to Artifact Registry (auth via Workload Identity Federation)
-#   deploy -> terraform apply + deploy new Cloud Run Job revision
+#   quality  — lint, type-check, test. Runs on every PR and push (#10).
+#   deploy   — build+push image to Artifact Registry, terraform apply, deploy a
+#              new Cloud Run Job revision. Runs on push to main, ONLY once enabled
+#              (#11, #12). Keyless auth to GCP via Workload Identity Federation.
 #
-# Authentication to GCP is keyless (OIDC -> WIF); no JSON keys are stored as secrets.
+# Enabling deploy (after `bootstrap` has been applied) — set these repo-level
+# Variables (Settings > Secrets and variables > Actions > Variables):
+#   DEPLOY_ENABLED      = true
+#   GCP_PROJECT         = migration-api-pipeline
+#   GCP_REGION          = us-central1
+#   AR_REPO             = migration
+#   TF_STATE_BUCKET     = <bootstrap output: state_bucket>
+#   WIF_PROVIDER        = <bootstrap output: workload_identity_provider>
+#   DEPLOYER_SA         = <bootstrap output: deployer_service_account>
+#   MIGRATION_SOURCE_URL = https://services2.arcgis.com/5I7u4SJE1vUr79JC/arcgis/rest/services/UniversityChapters_Public/FeatureServer/0/query
+# No JSON keys are ever stored — auth is short-lived OIDC via WIF.
 
 name: ci-cd
 
@@ -18,8 +25,96 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
-  lint-test:
+  quality:
+    name: Lint, type-check, test
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Implemented in Phase 5"
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies (frozen)
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Type-check (mypy)
+        run: uv run mypy
+
+      - name: Unit tests
+        run: uv run pytest -m "not integration"
+
+  deploy:
+    name: Build, push & deploy
+    needs: quality
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required for WIF OIDC token
+    env:
+      REGION: ${{ vars.GCP_REGION }}
+      IMAGE_BASE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT }}/${{ vars.AR_REPO }}/migration-pipeline
+      # Terraform reads these automatically (TF_VAR_* convention).
+      TF_VAR_project_id: ${{ vars.GCP_PROJECT }}
+      TF_VAR_region: ${{ vars.GCP_REGION }}
+      TF_VAR_source_url: ${{ vars.MIGRATION_SOURCE_URL }}
+      TF_VAR_image: placeholder # overridden after the image is built
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP (WIF, keyless)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOYER_SA }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.7"
+          terraform_wrapper: false
+
+      - name: Terraform init
+        working-directory: infra/terraform/main
+        run: terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      # The image must exist before the full apply (the Cloud Run Job references
+      # it), but the registry it lives in is created by this same config — so
+      # create just the registry first.
+      - name: Ensure Artifact Registry exists
+        working-directory: infra/terraform/main
+        run: terraform apply -input=false -auto-approve -target=google_artifact_registry_repository.migration
+
+      - name: Build & push image
+        run: |
+          set -euo pipefail
+          IMAGE="${IMAGE_BASE}:${GITHUB_SHA}"
+          docker build -t "$IMAGE" -t "${IMAGE_BASE}:latest" .
+          docker push "$IMAGE"
+          docker push "${IMAGE_BASE}:latest"
+          echo "TF_VAR_image=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Terraform apply (deploy new Cloud Run Job revision)
+        working-directory: infra/terraform/main
+        run: terraform apply -input=false -auto-approve
+
+      - name: Smoke test — execute the migration job
+        run: gcloud run jobs execute migration-job --region "${REGION}" --wait
