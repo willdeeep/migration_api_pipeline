@@ -30,9 +30,8 @@ venv/
 htmlcov/
 coverage.xml
 
-# Terraform
+# Terraform (commit .terraform.lock.hcl for reproducible provider versions)
 infra/**/.terraform/
-infra/**/.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 *.tfvars

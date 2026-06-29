@@ -1,0 +1,13 @@
+# Copy to terraform.tfvars and fill in (terraform.tfvars is gitignored).
+project_id = "migration-api-pipeline"
+region     = "us-central1"
+
+# Full image ref pushed by CI; for a manual apply use a tag you've pushed.
+image = "us-central1-docker.pkg.dev/migration-api-pipeline/migration/migration-pipeline:latest"
+
+# Stored in Secret Manager and injected into the job.
+source_url = "https://services2.arcgis.com/5I7u4SJE1vUr79JC/arcgis/rest/services/UniversityChapters_Public/FeatureServer/0/query"
+
+# Daily at 06:00 UTC.
+schedule           = "0 6 * * *"
+scheduler_timezone = "Etc/UTC"
