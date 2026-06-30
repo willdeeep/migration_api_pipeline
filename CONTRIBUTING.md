@@ -15,7 +15,7 @@ merge only when the **CI** check is green.
 3. Push the branch and open a PR into `main`.
 4. CI runs `ruff format --check`, `ruff check`, `mypy`, and `pytest`. The PR
    merges once CI passes.
-5. **Squash-merge** to keep `main` history linear.
+5. Merge using a **merge commit** (squash and rebase merges are disabled for `main`).
 
 When a PR merges into `main`, the **Deploy** workflow builds the image, applies
 Terraform, deploys a new Cloud Run Job revision, and runs the job as a smoke test
