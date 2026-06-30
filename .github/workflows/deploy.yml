@@ -1,64 +1,22 @@
-# CI/CD for the migration pipeline.
+# Deploy. Triggered when a PR is merged into main (a push to main — which branch
+# protection only allows via PR). Keyless WIF auth; no JSON keys (#11, #12).
 #
-#   quality  — lint, type-check, test. Runs on every PR and push (#10).
-#   deploy   — build+push image to Artifact Registry, terraform apply, deploy a
-#              new Cloud Run Job revision. Runs on push to main, ONLY once enabled
-#              (#11, #12). Keyless auth to GCP via Workload Identity Federation.
-#
-# Enabling deploy (after `bootstrap` has been applied) — set these repo-level
-# Variables (Settings > Secrets and variables > Actions > Variables):
-#   DEPLOY_ENABLED      = true
-#   GCP_PROJECT         = migration-api-pipeline
-#   GCP_REGION          = us-central1
-#   AR_REPO             = migration
-#   TF_STATE_BUCKET     = <bootstrap output: state_bucket>
-#   WIF_PROVIDER        = <bootstrap output: workload_identity_provider>
-#   DEPLOYER_SA         = <bootstrap output: deployer_service_account>
-#   MIGRATION_SOURCE_URL = https://services2.arcgis.com/5I7u4SJE1vUr79JC/arcgis/rest/services/UniversityChapters_Public/FeatureServer/0/query
-# No JSON keys are ever stored — auth is short-lived OIDC via WIF.
-
-name: ci-cd
+# Stays inert until enabled: set repo Variables per docs/cicd.md and
+# DEPLOY_ENABLED=true. Code reaching main has already passed the CI gate, so this
+# workflow builds/ships and runs the job as a smoke test rather than re-testing.
+name: Deploy
 
 on:
   push:
-    branches: [main]
-  pull_request:
     branches: [main]
 
 permissions:
   contents: read
 
 jobs:
-  quality:
-    name: Lint, type-check, test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-
-      - name: Install dependencies (frozen)
-        run: uv sync --frozen
-
-      - name: Ruff lint
-        run: uv run ruff check .
-
-      - name: Ruff format check
-        run: uv run ruff format --check .
-
-      - name: Type-check (mypy)
-        run: uv run mypy
-
-      - name: Unit tests
-        run: uv run pytest -m "not integration"
-
   deploy:
-    name: Build, push & deploy
-    needs: quality
-    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    name: deploy
+    if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
