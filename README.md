@@ -82,8 +82,15 @@ The image is multi-stage (built with the `uv` base image, shipped on
 
 ## Documentation
 
+- [CONTRIBUTING.md](CONTRIBUTING.md) — branch flow, PR gate, pre-commit
+- [docs/cicd.md](docs/cicd.md) — CI/CD pipeline and enablement
 - [docs/architecture.md](docs/architecture.md) — system design
 - [docs/runbook.md](docs/runbook.md) — operational notes, re-runs, teardown
+
+## Contributing
+
+`main` is protected — changes land via pull request and must pass CI. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Roadmap
 
@@ -91,6 +98,6 @@ The image is multi-stage (built with the `uv` base image, shipped on
 - ✅ **Phase 1** — Local functional spike (end-to-end: API → BigQuery)
 - ✅ **Phase 2** — Production hardening (validation/quarantine, retries, idempotency)
 - ✅ **Phase 3** — Containerisation (Dockerfile, docker-compose)
-- **Phase 4** — Infrastructure as Code (Terraform on GCP) *(next)*
-- **Phase 5** — CI/CD (GitHub Actions, keyless WIF)
-- **Phase 6** — Docs & operational readiness
+- ✅ **Phase 4** — Infrastructure as Code (Terraform on GCP)
+- ✅ **Phase 5** — CI/CD (GitHub Actions, keyless WIF)
+- **Phase 6** — Docs & operational readiness *(next)*
