@@ -1,6 +1,7 @@
 # CI/CD
 
-GitHub Actions workflow: [.github/workflows/ci-cd.yml](../.github/workflows/ci-cd.yml).
+GitHub Actions workflows: [ci.yml](../.github/workflows/ci.yml) (the merge gate)
+and [deploy.yml](../.github/workflows/deploy.yml) (release on merge to `main`).
 
 ## Pipeline
 
@@ -13,9 +14,37 @@ PR / push ──► quality ──► (push to main only, if enabled) ──► 
                                                               execute job (smoke test)
 ```
 
-- **quality** runs on every PR and push — the merge gate.
-- **deploy** runs only on `main`, and only when `DEPLOY_ENABLED == 'true'`. Auth
+- **CI** (`ci.yml`) — the `quality` job runs on every PR and feature-branch push;
+  it is the required status check that gates merging to `main`.
+- **Deploy** (`deploy.yml`) — runs on push to `main` (i.e. a merged PR), and only
+  when `DEPLOY_ENABLED == 'true'` so it stays inert until infra is wired up. Auth
   to GCP is short-lived OIDC via **Workload Identity Federation** — no JSON keys.
+
+## Branching model & environments
+
+This project uses a deliberately **simplified single-branch workflow**: one
+long-lived, protected, PR-only branch (`main`) that deploys to a **single
+production environment**. Every merge to `main` ships to prod. That keeps the
+assessment easy to run and reason about.
+
+**In a collaborative, multi-developer project I would promote changes through
+several branches and matching environments** rather than deploying straight to
+prod:
+
+| Branch | Environment | Purpose |
+|---|---|---|
+| `dev` | development | integration + developer testing |
+| `staging` | staging | UAT / pre-production sign-off |
+| `main` (prod) | production | released, live workloads |
+
+Changes flow **dev → staging → main** via PRs, with UAT sign-off gating the
+staging → main promotion. Each environment would be isolated — its own GCP
+project (or clearly separated resources), its own Terraform state, its own Secret
+Manager values and image tags — and the Deploy workflow would target the
+environment matching the branch (e.g. GitHub Actions Environments with
+per-environment Variables and required reviewers on prod). It's a natural
+extension of what's here: the same `deploy.yml`, parameterised per environment
+and triggered on merges into each branch.
 
 ## Dependency: apply the bootstrap layer first
 
