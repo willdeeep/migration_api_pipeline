@@ -8,9 +8,10 @@ transforms them, and loads them into **BigQuery** (the cloud migration target).
 It is containerised, deployed to GCP as a scheduled daily **Cloud Run Job**, and
 built/shipped via **GitHub Actions** with keyless authentication.
 
-> Status: **Phases 0–3 complete.** The pipeline runs end-to-end (locally and in a
-> container) into BigQuery, with validation/quarantine and structured logging.
-> Cloud IaC and CI/CD are the remaining phases (see the roadmap below).
+> Status: **Deployed and running on GCP.** The pipeline runs end-to-end locally,
+> in a container, and in the cloud as a scheduled Cloud Run Job — built and
+> shipped by CI/CD with keyless auth. See [docs/architecture.md](docs/architecture.md)
+> and the [runbook](docs/runbook.md).
 
 ## Architecture
 
@@ -80,6 +81,22 @@ docker compose run --rm migration
 The image is multi-stage (built with the `uv` base image, shipped on
 `python:3.14-slim`), runs as a non-root user, and is ~210 MB.
 
+## Deployment
+
+Provisioned by **Terraform** ([infra/terraform](infra/terraform)) and shipped by
+**GitHub Actions**, all with keyless auth (Workload Identity Federation — no JSON
+keys):
+
+```
+PR ─► CI (ruff · mypy · pytest) ─► merge to main ─► Deploy:
+   build & push image → terraform apply → Cloud Run Job → daily via Cloud Scheduler → BigQuery
+```
+
+Infra is two Terraform layers — `bootstrap/` (WIF, deployer SA, state bucket;
+applied once locally) and `main/` (Artifact Registry, BigQuery, Cloud Run Job,
+Scheduler, Secret Manager). See [docs/cicd.md](docs/cicd.md) for the pipeline and
+enablement, and the [runbook](docs/runbook.md) for operations.
+
 ## Documentation
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — branch flow, PR gate, pre-commit
@@ -100,4 +117,4 @@ The image is multi-stage (built with the `uv` base image, shipped on
 - ✅ **Phase 3** — Containerisation (Dockerfile, docker-compose)
 - ✅ **Phase 4** — Infrastructure as Code (Terraform on GCP)
 - ✅ **Phase 5** — CI/CD (GitHub Actions, keyless WIF)
-- **Phase 6** — Docs & operational readiness *(next)*
+- ✅ **Phase 6** — Docs & operational readiness
