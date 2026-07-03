@@ -41,6 +41,27 @@ resource "google_project_iam_custom_role" "assessor" {
     "artifactregistry.repositories.get",
     "artifactregistry.repositories.list",
     "artifactregistry.dockerimages.list",
+
+    # IAM / access design — inspect the least-privilege setup: roles, service
+    # accounts, Workload Identity Federation, and who is granted what (project-
+    # and resource-level policies). Read-only: no policy changes.
+    "resourcemanager.projects.getIamPolicy",
+    "iam.roles.get",
+    "iam.roles.list",
+    "iam.serviceAccounts.get",
+    "iam.serviceAccounts.list",
+    "iam.workloadIdentityPools.get",
+    "iam.workloadIdentityPools.list",
+    "iam.workloadIdentityPoolProviders.get",
+    "iam.workloadIdentityPoolProviders.list",
+    "run.jobs.getIamPolicy",
+    "secretmanager.secrets.getIamPolicy",
+    "artifactregistry.repositories.getIamPolicy",
+
+    # Cloud Storage — see the Terraform state bucket and its config (metadata
+    # only, not object contents).
+    "storage.buckets.get",
+    "storage.buckets.list",
   ]
 }
 
