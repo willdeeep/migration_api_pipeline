@@ -41,6 +41,7 @@ resource "google_project_iam_custom_role" "assessor" {
     "artifactregistry.repositories.get",
     "artifactregistry.repositories.list",
     "artifactregistry.packages.list",
+    "artifactregistry.versions.list",
     "artifactregistry.dockerimages.list",
 
     # IAM / access design — inspect the least-privilege setup: roles, service
@@ -59,11 +60,12 @@ resource "google_project_iam_custom_role" "assessor" {
     "secretmanager.secrets.getIamPolicy",
     "artifactregistry.repositories.getIamPolicy",
 
-    # Cloud Storage — see the Terraform state bucket and list its objects
-    # (names/metadata; object contents are not readable without storage.objects.get).
+    # Cloud Storage — see the Terraform state bucket, list objects, and read
+    # object contents (e.g. inspect the state files). Still no write/delete.
     "storage.buckets.get",
     "storage.buckets.list",
     "storage.objects.list",
+    "storage.objects.get",
   ]
 }
 
