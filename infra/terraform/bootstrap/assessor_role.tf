@@ -40,6 +40,7 @@ resource "google_project_iam_custom_role" "assessor" {
     # Artifact Registry — view the built images.
     "artifactregistry.repositories.get",
     "artifactregistry.repositories.list",
+    "artifactregistry.packages.list",
     "artifactregistry.dockerimages.list",
 
     # IAM / access design — inspect the least-privilege setup: roles, service
@@ -58,10 +59,11 @@ resource "google_project_iam_custom_role" "assessor" {
     "secretmanager.secrets.getIamPolicy",
     "artifactregistry.repositories.getIamPolicy",
 
-    # Cloud Storage — see the Terraform state bucket and its config (metadata
-    # only, not object contents).
+    # Cloud Storage — see the Terraform state bucket and list its objects
+    # (names/metadata; object contents are not readable without storage.objects.get).
     "storage.buckets.get",
     "storage.buckets.list",
+    "storage.objects.list",
   ]
 }
 
